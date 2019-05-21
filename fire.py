@@ -16,7 +16,6 @@ Because I lack ingenuity I also stole most of the logic from Sabglard's blog[1],
 '''
 import time
 from sys import exit
-from utils import pp
 from functools import partial
 from random import random, randrange
 
