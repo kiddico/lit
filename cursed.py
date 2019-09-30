@@ -6,15 +6,16 @@ from curses import wrapper, color_pair
 from pprint import PrettyPrinter as PP
 pp = PP(indent=4).pprint
 
-from time import time as t
 
-
-def main(scr, c_range):
+def main(scr, pair_range):
     scr.clear()
     get_pair = curses.color_pair
 
     while(True):
-        for idx, c_num in enumerate(range(c_range[0], c_range[1])):
+
+        # Just to ilustrate usage.
+        # enumerate(range()) is probably super bad...
+        for idx, c_num in enumerate(range(pair_range[0], pair_range[1])):
             scr.addstr(idx, 0,
                         '{:<3}:{:>4}'.format(idx, c_num),
                         get_pair(c_num)
@@ -23,32 +24,27 @@ def main(scr, c_range):
         scr.refresh()
         #scr.getkey()
 
-def initatron_5000():
-    try:
-        # Initialize all the things that curses.wrapper() does.
+# Initialize all the things that curses.wrapper() does.
+def prep_curses():
         scr = curses.initscr()
         curses.noecho()
         curses.cbreak()
         scr.keypad(True)
         curses.curs_set(0)
         curses.start_color()
+        return scr
 
-        # Our colors will go from 100 to 112, defaults are the no-no zone.
-        # 99 is used as a fg which can (for the most part) be read on our colors.
-        #curses.init_color(99, 500, 700, 1000)
-        for color_num, color_values in colors:
-            curses.init_color(color_num, *color_values)
-            curses.init_pair(color_num, 99, color_num)
-        scr.bkgdset(' ', curses.color_pair(100))
 
-        main(scr, c_range=(100,112))
+# Our colors will go from 100 to 112, defaults are the no-no zone.
+# 99 is used as a fg which can (for the most part) be read on our colors.
+def prep_colors(colors):
+    for color_num, color_values in colors:
+        curses.init_color(color_num, *color_values)
+        curses.init_pair(color_num, 99, color_num)
+    scr.bkgdset(' ', curses.color_pair(100))
 
-    # Should get us back to normality. ~~Should.~~
-    except Exception as e:
-        curses.endwin()
-        print(e)
-    finally:
-        curses.endwin()
+    # Pass a tuple with the indexes of our color pairs.
+    return (100,100+len(colors)-1)
 
 
 colors = ((99 , (500, 700, 1000)),
@@ -66,8 +62,17 @@ colors = ((99 , (500, 700, 1000)),
          (111, (1000, 1000, 529)),
          (112, (1000, 1000, 1000)))
 
-
 if __name__ == '__main__':
-    initatron_5000()
+    scr = prep_curses()
+    pair_range = prep_colors(colors)
+    try:
+        main(scr, pair_range=pair_range)
+
+    # Should get us back to normality. ~~Should.~~
+    except Exception as e:
+        curses.endwin()
+        print(e)
+    finally:
+        curses.endwin()
 
 
