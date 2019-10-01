@@ -14,8 +14,8 @@ from numpy import arange
 from numpy import intc
 from numpy import random
 
-# makes numpy's repr send it all
-#np.set_printoptions(threshold=sys.maxsize)
+# makes numpy's repr send everything
+np.set_printoptions(threshold=sys.maxsize)
 
 
 
@@ -54,61 +54,40 @@ def loop(scr, color_map):
     #state = random.randint(0,12,size=(height, width))
 
     #decay_idx = 0
-    cache_len = 25
-    decay_cache = generate_decay(height, width, 50, cache_len)
+    cache_len = 5
+    decay_cache = generate_decay(height, width, 15, cache_len)
 
     # Array with reindexing values.
     # https://stackoverflow.com/q/26194389
     ordering = np.asarray([*list(range(1, height)),0])
 
     t = time.time
-    with open('log.txt','w') as out:
-        #try:
-        while(True):
-            out.write(' \n\n')
+    while(True):
 
-            start_time = t()
-            out.write('\n\n---------------\n\n')
-            out.write('Starting State\n\n')
-            out.write(str(repr(state))+'\n\n')
+        state = state[ordering]
+        state[-1].fill(len(color_map)-1)
+        decay_mask = decay_cache[ random.randint(0, cache_len) ]
+        state = state - decay_mask
+        #state = state - decay_cache[ random.randint(0, cache_len) ]
+
+        for idy, row in enumerate(state):
+            for idx, cell in enumerate(row):
+                if cell < 0 or cell > max_value:
+                    #out.write('({},{}) from {} to {}\n\n'.format(idy, idx, cell, 0))
+                    state[idy][idx] = 0
+                    #scr.insstr(idy,idx, ' ', (100+state[idy][idx])<<8 )
+                    #scr.insstr(idy,idx, '{0:x}'.format(state[idy][idx]), (100+state[idy][idx])<<8 )
+                #scr.attroff(idy,idx, 255)
+                else:
+                #scr.chgat(idy, idx, (100+cell)<<8)
+                    #scr.insstr(idy,idx, '{0:x}'.format(cell), (100+cell)<<8 )
+                    scr.insstr(idy,idx, ' ', (100+state[idy][idx])<<8 )
+                #scr.chgat(idy, idx, color_map[cell])
 
 
-            state = state[ordering]
-            state[-1].fill(len(color_map)-1)
-            #out.write('\n\n')
-            out.write(str(repr(state))+'\n\n')
-            state = state - decay_cache[ random.randint(0, cache_len) ]
-            #state = [ row.clip(0) for row in state - decay_cache[ random.randint(0, cache_len) ] ]
-            #if decay_idx == (len(decay_cache)-1):
-            #    np.random.shuffle(decay_cache)
-            #out.write(repr(state))
-            scr.clear()
-            for idy, row in enumerate(state):
-                for idx, cell in enumerate(row):
-                    if cell < 0 or cell > max_value:
-                        #out.write('({},{}) from {} to {}\n\n'.format(idy, idx, cell, 0))
-                        state[idy][idx] = 0
-                    #scr.attroff(idy,idx, 112)
-                    scr.chgat(idy, idx, color_map[cell])
-
-            out.write(str(repr(state))+'\n')
-            # Shoot for <60hz, assume we've got at least 4ms of processing (lol)
-            scr.refresh()
-            t1 = scr.inch(0,0)
-            t2 = scr.inch(len(state)-1,0)
-
-            out.write( '{0:b}\n'.format( t1 ))
-            out.write( '{0:b}\n'.format( t1 >>8))
-            out.write(  '{}\n\n'.format( t1 >>8))
-            out.write( '{0:b}\n'.format( t2 ))
-            out.write( '{0:b}\n'.format( t2 >>8))
-            out.write(      '{}'.format( t2 >>8))
-            #scr.timeout(300)
-            #scr.getch()
-            #render_times.append(t() - start_time)
-            #raise Exception('        {}'.format(t() - start_time))
-        #except:
-        #    return
+        scr.refresh()
+        #scr.timeout(500)
+        #scr.getch()
 
 
 # Good lord this is ugly.
