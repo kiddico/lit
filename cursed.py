@@ -43,51 +43,117 @@ def loop(scr, color_map):
     scr.clear()
     get_pair = curses.color_pair
 
-
     height, width = scr.getmaxyx()
-    width = width-1
+    width = width
+    #width = width-1
 
-    max_value = len(color_map) - 1
+    state = full( (height, width), 0, dtype=int)
+    #state = np.vstack((state, full((1, width), len(colors)-1, dtype=intc)))
 
-    state = full( (height-1, width), 0, dtype=int)
-    state = np.vstack((state, full((1, width), len(colors)-1, dtype=intc)))
-    #state = random.randint(0,12,size=(height, width))
+    # Pre Compute Decay Masks
+    cache_len    = intc(10)
+    decay_weight = intc(70)
+    decay_index  = intc(0)
+    decay_cache  = generate_decay(height, width, decay_weight, cache_len)
 
-    #decay_idx = 0
-    cache_len = 5
-    decay_cache = generate_decay(height, width, 15, cache_len)
+    # (prefix + cell_value)<<8 == color_pair(color_map(cell_value))
+    prefix = intc(100)
 
-    # Array with reindexing values.
-    # https://stackoverflow.com/q/26194389
+    def_attr = prefix<<8
+    for y in range(0, height):
+        for x in range(0, width):
+            #scr.chgat(y, x, def_attr)
+            try:
+                scr.addstr(y, x, ' ', (100)<<8 )
+            except:
+                pass
+    scr.refresh()
+
+    # Re-Ordering Array used to shift the state around.
     ordering = np.asarray([*list(range(1, height)),0])
 
-    t = time.time
-    while(True):
 
-        state = state[ordering]
-        state[-1].fill(len(color_map)-1)
-        decay_mask = decay_cache[ random.randint(0, cache_len) ]
-        state = state - decay_mask
-        #state = state - decay_cache[ random.randint(0, cache_len) ]
+    with open('log.txt', 'w') as out:
 
-        for idy, row in enumerate(state):
-            for idx, cell in enumerate(row):
-                if cell < 0 or cell > max_value:
-                    #out.write('({},{}) from {} to {}\n\n'.format(idy, idx, cell, 0))
-                    state[idy][idx] = 0
-                    #scr.insstr(idy,idx, ' ', (100+state[idy][idx])<<8 )
-                    #scr.insstr(idy,idx, '{0:x}'.format(state[idy][idx]), (100+state[idy][idx])<<8 )
-                #scr.attroff(idy,idx, 255)
-                else:
-                #scr.chgat(idy, idx, (100+cell)<<8)
-                    #scr.insstr(idy,idx, '{0:x}'.format(cell), (100+cell)<<8 )
-                    scr.insstr(idy,idx, ' ', (100+state[idy][idx])<<8 )
-                #scr.chgat(idy, idx, color_map[cell])
+        t = time.time
+        while(True):
+
+            #state = np.roll(state, -1, axis=0)
+            #state[-1].fill(len(color_map)-1)
+
+            old_state = state.__deepcopy__(state)
+            state = state - decay_cache[ decay_index ]
+            decay_index = 0 if decay_index == cache_len-1 else decay_index + 1
+
+            # Need to figure out the nump-y way to do this.
+            for y in range(0, len(state)):
+                clipped = state[y].clip(min=0)
+                state[y] = clipped
+
+            #state = np.roll(state, -1, axis=0)
+            state = state[ordering]
+            state[-1].fill(len(color_map)-1)
+
+            # Calculate render mask, indexes that needs redrawn are true.
+            render_mask = old_state != state
+
+            #render_mask = np.roll(render_mask, -1, axis=0)
+            #render_mask[-1].fill(True)
 
 
-        scr.refresh()
-        #scr.timeout(500)
-        #scr.getch()
+            #for y in range(0, height-1):
+                #for x in range(0, width):
+                    #if render_mask[y][x]:
+                    #if state[y][x] != old_state[y+1][x]:
+                    #    scr.chgat(y, x, (prefix + state[y][x])<<8)
+                #if old_state[y] != state[y]:
+                #if any([ x[0] != x[1] for x in zip(old_state[y], state[y]) ]) and y < 13:
+                    #out.write('({},{}) of ({},{})\n'.format(y,x, height-1, width-1))
+                    #out.write('{}\n'.format(str(repr(state))))
+                    #out.write('{}\n'.format(str(repr(old_state))))
+                    #out.write('\n\n')
+                    #exit()
+                    #else:
+                        #scr.chgat(y, x, (prefix + old_state[y][x]) <<8)
+
+            for y, row in enumerate(zip(state, render_mask)):
+                for x, cell in enumerate(zip(*row)):
+                    #out.write(f'{y}{x}\n')
+                    #out.write('{}\n'.format(str(repr(row))))
+                    #out.write('{}\n---------\n\n'.format(str(repr(cell))))
+                    # If render mask @ cell is true...  do the things.
+                    #if cell[1] :
+                        #out.write('{0:x} : '.format(cell[0]))
+                        #out.write('{0:b}\n'.format(cell[0]))
+                        #scr.addstr(y, x, '{0:x}'.format(cell[0]), (prefix+cell[0])<<8 )
+                        #scr.chgat(y, x, (prefix+cell[0])<<8)
+                        #scr.chgat(y, x, (prefix+state[y][x])<<8)
+
+                    #scr.chgat(y, x, (prefix+state[y][x])<<8)
+                    if cell[1] :
+                        try:
+                            scr.addstr(y, x, ' ', (prefix+cell[0])<<8 )
+                            #scr.addstr(y, x, '{0:x}'.format(cell[0]), (prefix+cell[0])<<8 )
+                        except curses.error: pass
+                            #out.write('{},{}\n'.format( y, x ))
+                            #out.write('{},{}\n'.format( height-1, width-1 ))
+                            #out.write(str(repr(state)))
+
+                    #scr.chgat(y, x, (prefix+cell[0])<<8)
+
+#            for y in range(0, len(state)):
+#                for x in range(0, len(state[y])):
+
+                    # If decay went below zero bring it back up.
+                    #if state[y][x] < 0:
+                    #    state[y][x] = 0
+
+                    #if old_state[y][x] != state[y][x]:
+
+            scr.refresh()
+            scr.timeout(50)
+            #out.write('{}/{}\n'.format(dem_right_writes, dem_wrong_writes))
+            scr.getch()
 
 
 # Good lord this is ugly.
@@ -100,14 +166,16 @@ def generate_decay(h, w, weight=50, cache_count=100):
         for row in range(0, h):
             sr = int( (row/h) * 100 )
             sr_diff = 2*(h-sr)
-            rngs = [ rint(0, h + (2*weight)) for col in range(0,w) ]
+            #rngs = [ rint(0, h + (2*weight)) for col in range(0,w) ]
+            rngs = [ rint(0, h + (4*weight)) for col in range(0,w) ]
             temp.append([ 0 if val< sr else ( 1 if val > sr_diff else 2 ) for val in rngs ])
+            #temp.append([ 0 if val< sr else ( 1 if val > sr_diff else 2 ) for val in rngs ])
 
         masks.append(np.array(temp, dtype=intc))
 
     # remove source row from decay mask.
-    for mask in masks:
-        mask[-1].fill(0)
+    #for mask in masks:
+    #    mask[-1].fill(0)
 
     return masks
 
