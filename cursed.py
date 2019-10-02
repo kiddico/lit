@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
 
+
 import sys
 import curses
 from utils import *
 
 
 import numpy as np
-
-from numpy import full
-from numpy import array
-from numpy import arange
-
 from numpy import intc
-from numpy import random
 
 # makes numpy's repr send everything
 np.set_printoptions(threshold=sys.maxsize)
@@ -21,67 +16,50 @@ np.set_printoptions(threshold=sys.maxsize)
 
 def main():
     scr = prep_curses()
-    color_map = prep_colors(colors, font_color)
-
+    max_value = prep_colors(colors, font_color)
     try:
-        loop(scr, color_map)
+        loop(scr, max_value)
 
-    # Should get us back to normality. ~~s h o u l d~~
     except Exception as e:
-        scr.clear()
-        curses.endwin()
         pp(e)
+        pass
     finally:
+        # Should get us back to normality.
+        # ~~ s h o u l d ~~
         scr.clear()
         curses.endwin()
 
-
-
-
-def loop(scr, color_map):
+def loop(scr, max_value):
     scr.clear()
-    get_pair = curses.color_pair
 
     height, width = scr.getmaxyx()
-    width = width
-
-    state = full( (height, width), 0, dtype=int)
+    state = np.full( (height, width), 0, dtype=int)
 
     # Pre Compute Decay Masks
-    cache_len    = intc(300)
-    decay_weight = intc(30)
-    decay_index  = intc(0)
+    cache_len    = 50
+    decay_weight = 70
     scr.addstr(0,0,'Computing {} decay masks...'.format(cache_len), 98<<8)
     scr.refresh()
-    decay_cache  = generate_decay(height, width, decay_weight, cache_len)
+    decay_cache  = generate_decay(
+            height,
+            width,
+            decay_weight,
+            cache_len)
+    decay_index  = intc(0)
 
-    # Common values for attrs cached.
+    # Common values for attrs cached. Bitshift outpaces an array index deref by ~2x.
     # (prefix + cell_value)<<8 == color_pair(color_map(cell_value))
     prefix = intc(100)
-    def_attr = prefix<<8
 
-    # Fill 'er up
-    scr.addstr(0, 0, ' ' * width * ( height-1 ), def_attr )
-    # Read the note, it's dumb :
-    # https://docs.python.org/3/library/curses.html#curses.window.addstr
+    # Pre-fill Frame
+    scr.addstr(0, 0, ' ' * width * ( height-1 ), prefix<<8 )
     try: scr.addstr(height-1, 0, ' '*width, 98<<8 )
     except: pass
     scr.refresh()
 
-    # Re-Ordering Array used to shift the state around.
-    ordering = np.asarray([*list(range(1, height)),0])
-
-    t = time.time
-    now = t()
-    ftimes, ptimes, dtimes = list(), list(), list()
-    ftimes.append(now)
-    ptimes.append(0)
-    dtimes.append(0)
-    fps = ftime = ptime = dtime = 0
-    dims = '{}x{}'.format(height,width)
+    roll = np.roll
 
     while(True):
-        #st = t()
 
         old_state = state.__deepcopy__(state)
         state = state - decay_cache[ decay_index ]
@@ -92,9 +70,8 @@ def loop(scr, color_map):
             clipped = state[y].clip(min=0)
             state[y] = clipped
 
-        state = np.roll(state, -1, axis=0)
-        #state = state[ordering]
-        state[-1].fill(len(color_map)-1)
+        state = roll(state, -1, axis=0)
+        state[-1].fill(max_value)
 
         # Calculate render mask, indexes that needs redrawn are true.
         render_mask = old_state != state
@@ -104,103 +81,63 @@ def loop(scr, color_map):
             if any(row[1]):
                 for x, cell in enumerate(zip(*row)):
                     if cell[1] :
-                        scr.addstr(y, x, '{0:x}'.format(cell[0]), (prefix+cell[0])<<8 )
-                        #scr.addstr(y, x, ' ', (prefix+cell[0])<<8 )
+                        scr.addstr(y, x, '▄', (prefix+cell[0])<<8 )
 
-        #ptimes.append(t()-st)
-
-        #dt=t()
         scr.refresh()
-        #end_t = t()
-        #dtimes.append(  end_t - dt )
-        #ftimes.append( end_t  )
-
-        #if len(ftimes) > 300:
-        if False:
-            fps = '{}'.format( int(len(ftimes) / int(ftimes[-1] - ftimes[0])) )
-            #fps = '{}'.format( len(ftimes) / 3 )
+        scr.timeout(30)
+        scr.getch()
 
 
-            # ptime = processing time
-            ptime = sum( ptimes  )/len(ptimes)
-            # dtime = drawing time
-            dtime = sum( dtimes  )/len(dtimes)
 
-            # ftime = kitchen sink
-            ftime = dtime + ptime
-
-            ftimes.clear()
-            ptimes.clear()
-            dtimes.clear()
-
-            scr.addnstr(
-                    height-1,
-                    0,
-                    ' HxW:{} | FPS:{} | ftime:{:.5f} | ptime:{:.5f} | dtime:{:.5f}{:>20}'.format(
-                        dims,
-                        fps,
-                        ftime,
-                        ptime,
-                        dtime,
-                        ' '
-                        ),
-                    width-1,
-                    98<<8)
-
-            scr.refresh()
-        #scr.timeout(10)
-        #scr.getch()
-
-
-# Good lord this is ugly.
-# also super slow....
 def generate_decay(h, w, weight=50, cache_count=100):
-    rint = random.randint
+    rint = np.random.randint
+    arr  = np.array
     masks = [ ]
     for x in range(0, cache_count):
         temp = []
         for row in range(0, h):
             sr = int( (row/h) * 100 )
             sr_diff = 2*(h-sr)
-            #rngs = [ rint(0, h + (2*weight)) for col in range(0,w) ]
             rngs = [ rint(0, h + (4*weight)) for col in range(0,w) ]
             temp.append([ 0 if val< sr else ( 1 if val > sr_diff else 2 ) for val in rngs ])
-            #temp.append([ 0 if val< sr else ( 1 if val > sr_diff else 2 ) for val in rngs ])
-        masks.append(np.array(temp, dtype=intc))
-
-    # remove source row from decay mask.
-    #for mask in masks:
-    #    mask[-1].fill(0)
+        masks.append( arr(temp, dtype=intc) )
 
     return masks
 
-# Initialize all the things that curses.wrapper() does (but better)
-def prep_curses():
-        scr = curses.initscr()
-        curses.noecho()
-        curses.cbreak()
-        scr.keypad(True)
-        curses.curs_set(0)
-        curses.start_color()
-        return scr
 
-# tuples of color_num, and RGB values
+# Our colors are offset from 100. We want to avoid all the default colors/pairs.
+# 99 is used as a fg which can (for the most part) be read on our colors.
+# Pair 98 is black on white (Good for log messages in the bottom row.
+def prep_colors(colors, font_color):
+    init_c = curses.init_color
+    init_p = curses.init_pair
+
+    # The on-all-color font fg.
+    init_c(font_color[0], *font_color[1])
+
+    ## Experimenting with half height block as fg character for 2x vertical resolution.
+    ## This guy : '▄'
+
+    # For now make the max val just have 2x max
+    cn = colors[0][0]
+    init_c(cn, *colors[0][1])
+    init_p(cn, cn, cn)
+    # For fg == 1 lower.
+    # BG is "actual" value.
+    for color_num, color_values in colors[1:]:
+        init_c(color_num, *color_values)
+        init_p(color_num, color_num, color_num-1)
+
+    # Real black on white even with weird terminal colors/themes.
+    init_c(98, 0,0,0)
+    init_p(98, 98, colors[-1][0])
+
+    return intc(len(colors)-1)
+
+
+# Tuples of color_num, and RGB values
+# RGB values scale from 0-1000. ff->255->1000
 font_color = (99 , (500, 700, 1000))
-colors = (
-         (100, (0, 0, 0)),
-         (101, (372, 0, 0)),
-         (102, (529, 0, 0)),
-         (103, (686, 0, 0)),
-         (104, (843, 0, 0)),
-         (105, (1000, 0, 0)),
-         (106, (1000, 372, 0)),
-         (107, (1000, 529, 0)),
-         (108, (1000, 686, 0)),
-         (109, (1000, 843, 0)),
-         (110, (1000, 1000, 0)),
-         (111, (1000, 1000, 529)),
-         (112, (1000, 1000, 1000))
-         )
 colors = (
         (100, (0, 0, 0)),
         (101, (243, 0, 0)),
@@ -220,34 +157,19 @@ colors = (
         (115, (1000, 1000, 1000)),
         )
 
-# Our colors will go from 100 to 112, defaults are the no-no zone.
-# 99 is used as a fg which can (for the most part) be read on our colors.
-def prep_colors(colors, font_color):
-    init_c = curses.init_color
-    init_p = curses.init_pair
 
-    init_c(font_color[0], *font_color[1])
-
-    for color_num, color_values in colors:
-        init_c(color_num, *color_values)
-        init_p(color_num, 99, color_num)
-
-    # Real black on white even with weird terminal colors/themes.
-    init_c(98, 0,0,0)
-    init_p(98, 98, colors[-1][0])
-
-    color_map = tuple(curses.color_pair(x) for x in range(100, 100+len(colors)))
-    return color_map
-
+# Initialize all the things that curses.wrapper() does.
+# Avoids wrapping our event loop in a function call.
+def prep_curses():
+        scr = curses.initscr()
+        curses.noecho()
+        curses.cbreak()
+        scr.keypad(True)
+        curses.curs_set(0)
+        curses.start_color()
+        return scr
 
 
 if __name__ == '__main__':
     main()
 
-
-
-
-# shame corner
-
-#state = random.randint(0,12,size=(scr_y_dim, scr_x_dim-1))
-#'·'
