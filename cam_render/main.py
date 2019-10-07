@@ -8,23 +8,25 @@ from utils import pp
 from math import ceil
 from collections import defaultdict
 
+from numpy import intc
+
 
 scr = None
 def main():
-    try:
-        img = numpy.load('test_out.numpy_dump', allow_pickle=True)
-        # Try to 'compress' the image down to our displayable area.
-        # Find LCD of images h/w
-        ih, iw, _ = img.shape
-        ires = (ih, iw)
+    img = numpy.load('test_out.numpy_dump', allow_pickle=True)
+    # Try to 'compress' the image down to our displayable area.
+    # Find LCD of images h/w
+    ih, iw, _ = img.shape
+    ires = (ih, iw)
 
+    try:
         global scr
         scr = prep_curses()
         height, width = scr.getmaxyx()
         # In reality we have twice the number of vertical pixels.
         # Virtual sizes, width is left out of the modification party. SAD.
-        vh, vw = height, width
-        #vh, vw = height*2, width
+        #vh, vw = height, width
+        vh, vw = height*2, width
         vres = (vh, vw)
 
         color_dict = {}
@@ -40,19 +42,31 @@ def main():
             blocksize = max(h_ratio, w_ratio)
             new_h = int(ih/blocksize)
             new_w = int(iw/blocksize)
-            qprint('{}x{}'.format(new_h,new_w))
+            qprint('img: {}x{}'.format(ih,iw))
+            qprint('scr: {}x{}'.format(vh,vw))
+            qprint('new: {}x{}'.format(new_h,new_w))
+            qprint('bs: {}'.format(blocksize))
             frame = numpy.zeros((new_h, new_w, 3))
             for y, row in enumerate(frame):
                 trow = []
                 for x, _ in enumerate(row):
-                    for orow in img[y*blocksize : (y+1)*blocksize-1]:
-                        for cell in orow[x*blocksize : (x+1)*blocksize-1]:
-                            frame[y][x] += cell
-                    #frame[y][x] = frame[y][x] / blocksize**2
-                    #frame[y][x] = [ int((int(thing)/255)*16) for thing in frame[y][x] ]
+                    # os = original section
+                    os = img[y*blocksize:((y+1)*blocksize), x*blocksize:((x+1)*blocksize)]
+                    qprint(os)
+                    # Need to cast to int to we don't overflow uint8
+                    lined_up = os.flatten().reshape((-1,3)).astype(intc)
+                    qprint(lined_up)
+                    avg = (sum(lined_up) / blocksize**2).astype(intc)
+                    frame[y][x] = avg
+                    qprint(avg)
 
-                    t = frame[y][x] / blocksize**2
-                    t = tuple([ int((int(thing)/255)*16) for thing in t ])
+                    # reshuffle to rgb (from bgr)
+                    # align on intervals of 1000/16, from 0 to 992
+                    rgb = [ color for color in avg[::-1]]
+                    qprint(rgb)
+                    rgb = [ int((color/255)*16)/16*1000 for color in avg[::-1]]
+                    cprint(rgb)
+
                     # declare this as a color
                     if t in color_dict:
                         color_index = color_dict[t]
@@ -89,6 +103,7 @@ def main():
         scr.refresh()
 
     except Exception as e:
+        scr.clear()
         curses.endwin()
         print('\n')
         pp(e.args)
