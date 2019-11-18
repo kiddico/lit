@@ -15,7 +15,8 @@ from os.path import isfile, join
 # Said value is the same as calling color_pair for the color that we create.
 # (all it does internally is bitshift left 8 times.
 def clamp_and_init(cells):
-    clamp = lambda x: int(int((x/255)*16)/16*255)
+    # + 35 to brighten things up a bit.
+    clamp = lambda x: int(int((x/255)*16)/16*255) + 35
     clamped_cells = tuple(tuple(tuple(clamp(val) for val in cell[::-1]) for cell in row) for row in cells)
     clamped_colors = { x for y in clamped_cells for x in y }
 
@@ -28,7 +29,10 @@ def clamp_and_init(cells):
             curses.init_pair(t_idx, t_idx, t_idx)
             color_nums[color] = t_idx<<8
         # return a two dim thing with the values already at the calculated attribute
-        return tuple( tuple( color_nums[x] for x in row ) for row in clamped_cells )
+        new_cells = tuple( tuple( color_nums[x] for x in row ) for row in clamped_cells )
+        # This is used to calculate the 
+        numpy_cells = numpy.array(new_cells)
+        return new_cells, numpy_cells
 
     else:
         # If it fails maybe we can try again with one less 'step' (16 -> 15 -> 14)
@@ -55,16 +59,29 @@ def main():
         height, width = scr.getmaxyx()
         sres = resolution(height, width)
 
-        for frame_path in frame_paths:
-            frame = cv2.imread(frame_path, cv2.IMREAD_COLOR)
-            frame = resize_frame(frame, width, height-1, half_height = False)
+        # Old cell values used to calculate the render mask
+        # Filling with zeros will result in a full render on frame 0.
+        # Actual pixel values are >= 256, which will never match 0.
+        old_cells = numpy.zeros((height-1, width))
 
-            cells = clamp_and_init(frame)
+        for frame_path in frame_paths:
+            numpy_frame = cv2.imread(frame_path, cv2.IMREAD_COLOR)
+            frame = resize_frame(numpy_frame, width, height-1, half_height = False)
+
+
+            cells, numpy_cells = clamp_and_init(frame)
+            render_mask = old_cells != numpy_cells
+
             for y, row in enumerate(cells):
-                for x, cell in enumerate(row):
-                    scr.addstr(y, x, ' ', cell)
+                if render_mask[y].any():
+                    for x, cell in enumerate(row):
+                        # I'll need to do some testing to see if this increases performance at all...
+                        #if render_mask[y][x]:
+                        scr.addstr(y, x, ' ', cell)
             scr.refresh()
+            # Nevermind the inter-frame sleep. It's not running fast enough to need it.
             #curses.napms(int(1000/48))
+            old_cells = numpy_cells
 
     except Exception as e:
         scr.clear()
