@@ -9,6 +9,11 @@ import cv2
 from os import listdir
 from os.path import isfile, join
 
+# Aligns rgb values to multiples of 16.
+# Initializes colors for those new values.
+# Then returns 2 dim tuple with each cell being replaced by it's color pair value
+# Said value is the same as calling color_pair for the color that we create.
+# (all it does internally is bitshift left 8 times.
 def clamp_and_init(cells):
     # + 35 to brighten things up a bit.
     clamp = lambda x: int(int((x/255)*16)/16*255) + 35
@@ -17,22 +22,24 @@ def clamp_and_init(cells):
 
     color_nums = {}
     if len(clamped_colors) <= 255:
-        # For now just create the color number dictionary.
-        # Each for loop is at most 255 iterations.
         for idx, color in enumerate(clamped_colors):
-            color_nums[color] = (idx+1)<<8
-
-        # Assign values for cells BEFORE creating color pairs
-        # (this will take longer than either loop by 2 orders of magnitude.
-        new_cells = tuple( tuple( color_nums[x] for x in row ) for row in clamped_cells )
-
-        # Do the same loop again, this time only make the colors/pairs.
-        # The longer we can delay this the less pronounced the artifacting will be.
-        for idx, color in enumerate(clamped_colors):
+            # offset color index to align to 1..255
             t_idx = idx + 1
             curses.init_color(t_idx, *color)
             curses.init_pair(t_idx, t_idx, t_idx)
-        return new_cells
+            color_nums[color] = t_idx<<8
+        # return a two dim thing with the values already at the calculated attribute
+        #new_cells = tuple( tuple( color_nums[x] for x in row ) for row in clamped_cells )
+
+        #numpy_cells = numpy.array(new_cells)
+        numpy_cells = numpy.empty((len(cells), len(cells[0])), dtype = int)
+        for y, row in enumerate(clamped_cells):
+            for x, value in enumerate(row):
+                numpy_cells[y][x] = color_nums[value]
+        return numpy_cells
+
+        #return new_cells, numpy_cells
+
     else:
         # If it fails maybe we can try again with one less 'step' (16 -> 15 -> 14)
         # if we add it to the parameter list we can make it recursive.
@@ -58,17 +65,26 @@ def main():
         height, width = scr.getmaxyx()
         sres = resolution(height, width)
 
+        # Old cell values used to calculate the render mask
+        # Filling with zeros will result in a full render on frame 0.
+        # Actual pixel values are >= 256, which will never match 0.
+        old_cells = numpy.zeros((height-1, width))
+
         for frame_path in frame_paths:
             numpy_frame = cv2.imread(frame_path, cv2.IMREAD_COLOR)
             frame = resize_frame(numpy_frame, width, height-1, half_height = False)
 
 
-            cells = clamp_and_init(frame)
+            numpy_cells = clamp_and_init(frame)
+            render_mask = old_cells != numpy_cells
 
-            for y, row in enumerate(cells):
-                for x, cell in enumerate(row):
-                    scr.addstr(y, x, ' ', cell)
-            scr.refresh()
+            for y, row in enumerate(numpy_cells):
+                if render_mask[y].any():
+                    for x, cell in enumerate(row):
+                        if render_mask[y][x]:
+                            scr.addstr(y, x, ' ', cell)
+                    scr.refresh()
+            old_cells = numpy_cells
 
     except Exception as e:
         scr.clear()
