@@ -12,7 +12,7 @@ import cv2
 # Said value is the same as calling color_pair for the color that we create.
 # (all it does internally is bitshift left 8 times.
 def clamp_and_init(cells):
-    clamp = lambda x: int(int((x/255)*14)/14*255)
+    clamp = lambda x: int(int((x/255)*16)/16*255)
     clamped_cells = tuple(tuple(tuple(clamp(val) for val in cell[::-1]) for cell in row) for row in cells)
     clamped_colors = { x for y in clamped_cells for x in y }
 
@@ -67,7 +67,7 @@ def iterative_clamp(cells, align_on=16):
 
 resolution = namedtuple('resolution', ['y', 'x'])
 def main():
-    image_in = cv2.imread('waves.jpg', cv2.IMREAD_COLOR)
+    image_in = cv2.imread('hats_on_hats_on_hats.jpg', cv2.IMREAD_COLOR)
     #image_in = numpy.load('60_80_hats.dump', allow_pickle=True)
     #ires = resolution(*image.shape[:2])
     try:
