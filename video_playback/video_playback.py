@@ -6,13 +6,16 @@ from collections import namedtuple
 from sys import exit
 import cv2
 
+from os import listdir
+from os.path import isfile, join
+
 # Aligns rgb values to multiples of 16.
 # Initializes colors for those new values.
 # Then returns 2 dim tuple with each cell being replaced by it's color pair value
 # Said value is the same as calling color_pair for the color that we create.
 # (all it does internally is bitshift left 8 times.
 def clamp_and_init(cells):
-    clamp = lambda x: int(int((x/255)*14)/14*255)
+    clamp = lambda x: int(int((x/255)*16)/16*255)
     clamped_cells = tuple(tuple(tuple(clamp(val) for val in cell[::-1]) for cell in row) for row in cells)
     clamped_colors = { x for y in clamped_cells for x in y }
 
@@ -33,27 +36,35 @@ def clamp_and_init(cells):
         raise Exception('Cannot reduce color space with clamping method.')
 
 
-def resize_image(cv2_image, x_res, y_res, half_height=True):
+def resize_frame(cv2_frame, x_res, y_res, half_height=True):
     y_res = int(y_res/2) if half_height else y_res
     new_res = (x_res, y_res)
-    return cv2.resize(cv2_image, new_res)
+    return cv2.resize(cv2_frame, new_res)
+
+def get_frame_paths(folder):
+    return ['{}/{}'.format(folder, f) for f in listdir(folder) if isfile(join(folder, f))]
+
 
 
 resolution = namedtuple('resolution', ['y', 'x'])
 def main():
-    image_in = cv2.imread('ghost_sample_1.mp4', cv2.IMREAD_COLOR)
+
+    frame_paths = get_frame_paths('ghost_sample_2_frames')
     try:
         scr = prep_curses()
         height, width = scr.getmaxyx()
         sres = resolution(height, width)
-        image = resize_image(image_in, width, height-1, half_height = False)
 
-        cells = clamp_and_init(image)
-        while True:
+        for frame_path in frame_paths:
+            frame = cv2.imread(frame_path, cv2.IMREAD_COLOR)
+            frame = resize_frame(frame, width, height-1, half_height = False)
+
+            cells = clamp_and_init(frame)
             for y, row in enumerate(cells):
                 for x, cell in enumerate(row):
-                    scr.addstr(y,x,' ', cell)
+                    scr.addstr(y, x, ' ', cell)
             scr.refresh()
+            #curses.napms(int(1000/48))
 
     except Exception as e:
         scr.clear()
