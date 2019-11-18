@@ -3,7 +3,7 @@ import curses
 import numpy
 from utils import pp
 from collections import namedtuple
-from sys import exit
+from sys import exit, argv
 import cv2
 
 # Aligns rgb values to multiples of 16.
@@ -12,7 +12,8 @@ import cv2
 # Said value is the same as calling color_pair for the color that we create.
 # (all it does internally is bitshift left 8 times.
 def clamp_and_init(cells):
-    clamp = lambda x: int(int((x/255)*16)/16*255)
+    clamp_value = 14
+    clamp = lambda x: int(int((x/255)*clamp_value)/clamp_value*255)
     clamped_cells = tuple(tuple(tuple(clamp(val) for val in cell[::-1]) for cell in row) for row in cells)
     clamped_colors = { x for y in clamped_cells for x in y }
 
@@ -65,23 +66,18 @@ def iterative_clamp(cells, align_on=16):
         raise Exception('Cannot reduce color space with clamping method.')
 
 
-resolution = namedtuple('resolution', ['y', 'x'])
 def main():
-    image_in = cv2.imread('hats_on_hats_on_hats.jpg', cv2.IMREAD_COLOR)
-    #image_in = numpy.load('60_80_hats.dump', allow_pickle=True)
-    #ires = resolution(*image.shape[:2])
+    if len(argv) > 1:
+        image_name = argv[1]
+    else:
+        image_name = 'the_great_wave.jpg'
+    image_in = cv2.imread(image_name, cv2.IMREAD_COLOR)
     try:
         scr = prep_curses()
         height, width = scr.getmaxyx()
-        sres = resolution(height, width)
         image = resize_image(image_in, width, height-1, half_height = False)
-        #image = resize_image(image_in, width-int(0.01 * width), height-int(0.01*height), half_height = False)
-        #image = resize_image(image_in, width-int(0.1 * width), height-int(0.1*height), half_height = False)
 
         cells = clamp_and_init(image)
-        #qprint(cells[0])
-        #qprint(len(cells))
-        #cprint(len(cells[0]))
         while True:
             for y, row in enumerate(cells):
                 for x, cell in enumerate(row):
