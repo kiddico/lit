@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-import curses
-import numpy
-from utils import pp
-from collections import namedtuple
-from sys import exit, argv
+
 import cv2
+import numpy
+import curses
+from utils import pp
+from sys import exit, argv
+from collections import namedtuple
 
 
 def resize_image(cv2_image, x_res, y_res, half_height=True):
@@ -43,6 +44,7 @@ def main():
     else:
         image_name = 'the_great_wave.jpg'
     image_in = cv2.imread(image_name, cv2.IMREAD_COLOR)
+
     try:
         scr = prep_curses()
         height, width = scr.getmaxyx()
