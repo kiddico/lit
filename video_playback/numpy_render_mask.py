@@ -51,8 +51,10 @@ def get_frame_paths(folder):
 
 
 def main():
-
-    frame_paths = get_frame_paths('ghost_sample_2_frames')
+    if len(argv) > 1:
+        frame_paths = get_frame_paths(argv[1].replace('/',''))
+    else:
+        frame_paths = get_frame_paths('ghost_sample_2_frames')
     try:
         scr = prep_curses()
         height, width = scr.getmaxyx()

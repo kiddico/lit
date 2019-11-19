@@ -10,9 +10,10 @@ from collections import namedtuple
 from os import listdir
 from os.path import isfile, join
 
+# Iterative clamp is expensive, so I'll stick to constant alignment intervals during video playback.
 def clamp_and_init(cells):
     # + 35 to brighten things up a bit.
-    clamp = lambda x: int(int((x/255)*14)/14*255)
+    clamp = lambda x: int(int((x/255)*14)/14*255)+35
     clamped_cells = tuple(tuple(tuple(clamp(val) for val in cell[::-1]) for cell in row) for row in cells)
     clamped_colors = { x for y in clamped_cells for x in y }
 
@@ -50,14 +51,14 @@ def get_frame_paths(folder):
 
 
 
-resolution = namedtuple('resolution', ['y', 'x'])
 def main():
-
-    frame_paths = get_frame_paths('ghost_sample_2_frames')
+    if len(argv) > 1:
+        frame_paths = get_frame_paths(argv[1].replace('/',''))
+    else:
+        frame_paths = get_frame_paths('ghost_sample_2_frames')
     try:
         scr = prep_curses()
         height, width = scr.getmaxyx()
-        sres = resolution(height, width)
 
         for frame_path in frame_paths:
             numpy_frame = cv2.imread(frame_path, cv2.IMREAD_COLOR)
