@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-import curses
-import numpy
-from utils import pp
-from collections import namedtuple
-from sys import exit
+
 import cv2
+import numpy
+import curses
+from utils import pp
+from sys import exit, argv
+from collections import namedtuple
 
 from os import listdir
 from os.path import isfile, join

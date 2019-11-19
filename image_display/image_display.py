@@ -30,10 +30,10 @@ def iterative_clamp(cells, align_on=24):
         return tuple( tuple( color_nums[x] for x in row ) for row in clamped_cells )
 
     else:
+        # If we go below 4 alignment steps... there's a problem.
+        # Otherwise recurse our way into oblivion.
         if align_on > 4:
             return iterative_clamp(cells, align_on=align_on-1)
-        # If it fails maybe we can try again with one less 'step' (16 -> 15 -> 14)
-        # if we add it to the parameter list we can make it recursive.
         raise Exception('Cannot reduce color space with clamping method.')
 
 
