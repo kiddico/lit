@@ -12,8 +12,7 @@ from os.path import isfile, join
 
 # Iterative clamp is expensive, so I'll stick to constant alignment intervals during video playback.
 def clamp_and_init(cells):
-    # + 35 to brighten things up a bit.
-    clamp = lambda x: int(int((x/255)*14)/14*255)+35
+    clamp = lambda x: int(int((x/255)*14)/14*1000)
     clamped_cells = tuple(tuple(tuple(clamp(val) for val in cell[::-1]) for cell in row) for row in cells)
     clamped_colors = { x for y in clamped_cells for x in y }
 
