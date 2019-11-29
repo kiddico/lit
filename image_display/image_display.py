@@ -14,8 +14,8 @@ def resize_image(cv2_image, x_res, y_res, half_height=True):
     return cv2.resize(cv2_image, new_res)
 
 
-def iterative_clamp(cells, align_on=24):
-    clamp = lambda x: int(int((x/255)*align_on)/align_on*255)
+def iterative_clamp(cells, align_on=20):
+    clamp = lambda x: int(int((x/255)*align_on)/align_on*1000)
     clamped_cells = tuple(tuple(tuple(clamp(val) for val in cell[::-1]) for cell in row) for row in cells)
     clamped_colors = { x for y in clamped_cells for x in y }
 
