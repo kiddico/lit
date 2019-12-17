@@ -10,9 +10,18 @@ from collections import namedtuple
 from os import listdir
 from os.path import isfile, join
 
+from kmeans import kmeans
+
+# TODO
+# * Break clamp and init apart
+#   * Clamp before passing to clustering.
+# * How do we want to organize info mid-clustering?
+# 
+
 # Iterative clamp is expensive, so I'll stick to constant alignment intervals during video playback.
 def clamp_and_init(cells):
-    clamp = lambda x: int(int((x/255)*14)/14*1000)
+    clamp = lambda x: int(int((x/255)*24)/24*1000)
+    #clamp = lambda x: int(int((x/255)*14)/14*1000)
     clamped_cells = tuple(tuple(tuple(clamp(val) for val in cell[::-1]) for cell in row) for row in cells)
     clamped_colors = { x for y in clamped_cells for x in y }
 
@@ -55,6 +64,8 @@ def main():
         frame_paths = get_frame_paths(argv[1].replace('/',''))
     else:
         frame_paths = get_frame_paths('ghost_sample_2_frames')
+
+    kmeans( (cv2.imread(frame_paths[0], cv2.IMREAD_COLOR)) )
     try:
         scr = prep_curses()
         height, width = scr.getmaxyx()
@@ -70,6 +81,7 @@ def main():
                 for x, cell in enumerate(row):
                     scr.addstr(y, x, ' ', cell)
             scr.refresh()
+            curses.napms(4000)
 
     except Exception as e:
         scr.clear()
