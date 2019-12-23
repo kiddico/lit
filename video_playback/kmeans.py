@@ -19,10 +19,37 @@ def kmeans(frames):
     colors = set()
     for frame in frames:
         # Reverse opencv fuckery to rgb color.
-        colors = colors | { tuple( pixel[::-1] ) for pixel in frame }
+        colors |= { tuple( pixel[::-1] ) for pixel in frame }
+
+    dist = lambda c1,c2: sqrt(sum((px - qx) ** 2.0 for px, qx in zip(c1, c2)))
 
     print(len(colors))
     exit()
+
+# Given a set of colors use kmeans to find the centroid.
+# return as tuple of tuples
+# this is meant to be ran post-clamping, so the bgr -> rgb conversion is already done.
+# and in theory the color space is already fairly reduced so things **should** be a wee bit faster.
+def find_centroids(colors):
+
+
+    pass
+
+# Cluster -> dict(color:centroid)
+# Link cells -> Centroid
+# init colors
+# ???
+# profit
+
+
+
+
+
+
+
+
+
+
 
 # Distance between two color values.
 def color_distance(c1, c2):
