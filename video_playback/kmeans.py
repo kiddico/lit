@@ -6,25 +6,39 @@
 from utils import pp
 from math import sqrt
 from sys import exit
-
+from collections import defaultdict
 
 #def multi_frame_cluster(frames):
 def kmeans(frames):
-    '''
-    Frames are from opencv IM_READ.
-    Not sure if I want to do this pre or post resize...
-    Post would obviously be a LOT faster...
-    We'll figure things out as we go.
-    '''
     colors = set()
     for frame in frames:
         # Reverse opencv fuckery to rgb color.
         colors |= { tuple( pixel[::-1] ) for pixel in frame }
 
-    dist = lambda c1,c2: sqrt(sum((px - qx) ** 2.0 for px, qx in zip(c1, c2)))
+    # So, lets think about how we're going to organize this thing.
+    # We'll have a dict of centroids -> colors in that centroid (on the last iteration)
+    #    Take note that with this approach we'll need to invert the dict at the end to make the color map (given color->displayable color)
+    # First up, we need to have centroids, lets just choose 255 (not 256!) random colors.
 
+    dist = lambda c1,c2: sqrt(sum((px - qx) ** 2.0 for px, qx in zip(c1, c2)))
+    initialize_clustering(colors)
+
+    # 
     print(len(colors))
     exit()
+
+# Get the initial centers and make a dict mapping centers to colors.
+def initialize_clustering(colors):
+    # Does set have any type of ordering? I assume not because it just uses a has function.
+    # So, if I just take the first N from a set, does that 
+
+    # yuuuuppp. works perfectly
+    centroids = list(colors)[:100]
+    clusters  = defaultdict(list)
+    # okay... not this gets computationally .... hard.
+    
+    for color in colors:
+        #find clostest centroid
 
 # Given a set of colors use kmeans to find the centroid.
 # return as tuple of tuples
@@ -34,22 +48,6 @@ def find_centroids(colors):
 
 
     pass
-
-# Cluster -> dict(color:centroid)
-# Link cells -> Centroid
-# init colors
-# ???
-# profit
-
-
-
-
-
-
-
-
-
-
 
 # Distance between two color values.
 def color_distance(c1, c2):

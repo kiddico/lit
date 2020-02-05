@@ -82,14 +82,17 @@ def main():
     #     change val -> dict(cell_value)
     #
 
-    #kmeans( (cv2.imread(frame_paths[0], cv2.IMREAD_COLOR)) )
+    kmeans( (cv2.imread(frame_paths[0], cv2.IMREAD_COLOR)) )
     # clamped_cells, clamped_colors = clamp()
     # [cells]      , set(colors)
     # kmeans(
     try:
-        scr = prep_curses()
-        h, w = scr.getmaxyx()
-        frames = tuple( resize_frame(cv2.imread(p, cv2.IMREAD_COLOR),w, h-1)  for p in frame_paths )
+        #scr = prep_curses()
+        #h, w = scr.getmaxyx()
+        #frames = tuple( resize_frame(cv2.imread(p, cv2.IMREAD_COLOR),w, h-1)  for p in frame_paths )
+        frames = tuple( cv2.imread(p, cv2.IMREAD_COLOR) for p in frame_paths )
+        kmeans(frames)
+        exit()
         ccells, ccolors = clamp(frames)
 
 
