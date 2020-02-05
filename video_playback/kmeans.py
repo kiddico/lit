@@ -29,32 +29,31 @@ def kmeans(frames):
 
 # Get the initial centers and make a dict mapping centers to colors.
 def initialize_clustering(colors):
-    # Does set have any type of ordering? I assume not because it just uses a has function.
-    # So, if I just take the first N from a set, does that 
-
-    # yuuuuppp. works perfectly
-    centroids = list(colors)[:100]
+    color_list = list(colors)
+    # "Random" centroids to start. Assumes set wont magially sort things.
+    centroids = color_list[:100]
     clusters  = defaultdict(list)
-    # okay... not this gets computationally .... hard.
-    
-    for color in colors:
+    dist = color_distance
+    for color in color_list[::-1]:
+        # get a tuple of the closest ceontroid.
+        #closest = min( [ (dist(color, cent), cent) for cent in centroids ], key=lambda x:x[0])
+        distances = sorted([ (dist(color, cent), cent) for cent in centroids ], key=lambda x:x[0])
+        pp(centroids)
+        print('')
+        pp(color)
+        print('')
+        pp(distances)
+        exit()
+        pass
         #find clostest centroid
 
-# Given a set of colors use kmeans to find the centroid.
-# return as tuple of tuples
-# this is meant to be ran post-clamping, so the bgr -> rgb conversion is already done.
-# and in theory the color space is already fairly reduced so things **should** be a wee bit faster.
-def find_centroids(colors):
-
-
-    pass
 
 # Distance between two color values.
-def color_distance(c1, c2):
-    # The assumption is made that colors are a tuple in rgb order.
-    #return sqrt( () + () + ())**2
-    # JFM man
-    return sqrt(sum((px - qx) ** 2.0 for px, qx in zip(c1, c2)))
+#def color_distance(c1, c2):
+#    return sqrt(sum((px - qx) ** 2.0 for px, qx in zip(c1, c2)))
+
+# Be sure to bring into local scope!
+color_distance = lambda c1,c2: sqrt(sum((px - qx) ** 2.0 for px, qx in zip(c1, c2)))
 
 # Get the distance between a single color (c1) and a list of colors (l1).
 # return the distance, color, and index (in a tuple) of the closes color in l1.
