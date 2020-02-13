@@ -10,56 +10,70 @@ from collections import defaultdict
 
 #def multi_frame_cluster(frames):
 def kmeans(frames):
-    colors = set()
+    color_set = set()
     for frame in frames:
-        # Reverse opencv fuckery to rgb color.
-        colors |= { tuple( pixel[::-1] ) for pixel in frame }
+        for row in frame:
+            color_set |= { cell for cell in row }
+    color_list = list(color_set)
 
-    # So, lets think about how we're going to organize this thing.
     # We'll have a dict of centroids -> colors in that centroid (on the last iteration)
-    #    Take note that with this approach we'll need to invert the dict at the end to make the color map (given color->displayable color)
-    # First up, we need to have centroids, lets just choose 255 (not 256!) random colors.
+    #    Take note that with this approach we'll need to invert the dict at the end
+    #    to make the color map (given color->displayable color)
 
     dist = lambda c1,c2: sqrt(sum((px - qx) ** 2.0 for px, qx in zip(c1, c2)))
-    initialize_clustering(colors)
+    clusters = initialize_clustering(color_list)
 
-    # 
-    print(len(colors))
+    # I have no idea what a reasonable amount of iterations is.
+    # We **should** have a metic to optimize for (avg/max dist of points from centroids?)
+    # but it could run for an arbitrary length of time if we do that...
+
+    #print('Before: ')
+    #pp(sorted([k for k in clusters.keys()][:10], key=lambda x:x[0]))
+
+    for _ in range(0, 42):
+        centroids = []
+        #for colors in clusters.values():
+        for centroid, colors in clusters.items():
+            print('before: {}'.format(repr(centroid)))
+            d = len(colors)
+            centroids.append((
+                int(sum(t[0] for t in colors)/d),
+                int(sum(t[1] for t in colors)/d),
+                int(sum(t[2] for t in colors)/d)
+                ))
+
+            print('after: {}\n'.format(repr(centroids[-1])))
+        clusters  = defaultdict(list)
+        for color in color_list:
+            closest = min( [ (dist(color, cent), cent) for cent in centroids ], key=lambda x:x[0])
+            clusters[closest[1]].append(color)
+        break
+
+    #print('\n\n------\n')
+    #print('after: ')
+    #pp(sorted([k for k in clusters.keys()][:10], key=lambda x:x[0]))
+
     exit()
 
 # Get the initial centers and make a dict mapping centers to colors.
-def initialize_clustering(colors):
-    color_list = list(colors)
+def initialize_clustering(color_list):
     # "Random" centroids to start. Assumes set wont magially sort things.
-    centroids = color_list[:100]
+    # Which is a somewhat dangerous approach with recent changes to dict sorting by default.
+    centroids = color_list[:255]
     clusters  = defaultdict(list)
     dist = color_distance
-    for color in color_list[::-1]:
-        # get a tuple of the closest ceontroid.
-        #closest = min( [ (dist(color, cent), cent) for cent in centroids ], key=lambda x:x[0])
-        distances = sorted([ (dist(color, cent), cent) for cent in centroids ], key=lambda x:x[0])
-        pp(centroids)
-        print('')
-        pp(color)
-        print('')
-        pp(distances)
-        exit()
-        pass
-        #find clostest centroid
+    for color in color_list:
+        closest = min( [ (dist(color, cent), cent) for cent in centroids ], key=lambda x:x[0])
+        clusters[closest[1]].append(color)
+        #pp(sorted( [ (dist(color, cent), cent) for cent in centroids ], key=lambda x:x[0]))
+    return clusters
 
-
-# Distance between two color values.
-#def color_distance(c1, c2):
-#    return sqrt(sum((px - qx) ** 2.0 for px, qx in zip(c1, c2)))
+# First iteration
+def get_next_cetroids(clusters):
+    pass
 
 # Be sure to bring into local scope!
 color_distance = lambda c1,c2: sqrt(sum((px - qx) ** 2.0 for px, qx in zip(c1, c2)))
-
-# Get the distance between a single color (c1) and a list of colors (l1).
-# return the distance, color, and index (in a tuple) of the closes color in l1.
-def color_distances(c1, l1):
-    pass
-
 
 
 # No touchy.
