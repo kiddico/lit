@@ -12,37 +12,16 @@ from os.path import isfile, join
 
 from kmeans import kmeans
 
+# emd goal: map of colors to 
+def init_colors(color_map, centroids):
+    cent_indexes = { cent:idx+1 for idx, cent in enumerate(centroids) }
 
-# Iterative clamp is expensive, so I'll stick to constant alignment intervals during video playback.
-def clamp_and_init(cells):
-    #clamp = lambda x: int(int((x/255)*24)/24*1000)
-    clamp = lambda x: int(int((x/255)*14)/14*1000)
-    clamped_cells = tuple(tuple(tuple(clamp(val) for val in cell[::-1]) for cell in row) for row in cells)
-    clamped_colors = { x for y in clamped_cells for x in y }
+    for cent, idx in cent_indexes.items():
+        curses.init_color(idx, *cent)
+        curses.init_pair(idx, idx, idx)
+    attr_map = { color:cent_indexes[cent]<<8 for color, cent in color_map.items() }
 
-    color_nums = {}
-    if len(clamped_colors) <= 255:
-        # For now just create the color number dictionary.
-        # Each for loop is at most 255 iterations.
-        for idx, color in enumerate(clamped_colors):
-            color_nums[color] = (idx+1)<<8
-
-        # Assign values for cells BEFORE creating color pairs
-        # (this will take longer than either loop by 2 orders of magnitude.
-        new_cells = tuple( tuple( color_nums[x] for x in row ) for row in clamped_cells )
-
-        # Do the same loop again, this time only make the colors/pairs.
-        # The longer we can delay this the less pronounced the artifacting will be.
-        for idx, color in enumerate(clamped_colors):
-            t_idx = idx + 1
-            curses.init_color(t_idx, *color)
-            curses.init_pair(t_idx, t_idx, t_idx)
-        return new_cells
-    else:
-        # If it fails maybe we can try again with one less 'step' (16 -> 15 -> 14)
-        # if we add it to the parameter list we can make it recursive.
-        raise Exception('Cannot reduce color space with clamping method.')
-
+    return attr_map
 
 def resize_frame(cv2_frame, x_res, y_res, half_height=False):
     y_res = int(y_res/2) if half_height else y_res
@@ -55,19 +34,9 @@ def get_frame_paths(folder):
 
 def clamp(frames):
     clamp_val = lambda x: int(int((x/255)*32)/32*1000)
-    #clamp = lambda x: int(int((x/255)*32)/32*1000)
     return [ tuple(tuple(tuple(clamp_val(value) for value in  cell[::-1]) for cell in row) for row in f) for  f in frames ]
-        
-    clamped_frames = []
-    clamped_colors = set()
-    for cells in frames:
-        clamped_frames.append(tuple(tuple(tuple(numpy.int16(clamp(val)) for val in cell[::-1]) for cell in row) for row in cells))
-        #clamped_colors |= { x for y in clamped_cells for x in y }
-    return clamped_frames
-    #return clamped_frames, clamped_colors
 
-def color_init():
-    pass
+
 
 def main():
     if len(argv) > 1:
@@ -75,38 +44,21 @@ def main():
     else:
         frame_paths = get_frame_paths('ghost_sample_2_frames')
 
-
-    ####
-    #
-    # dict (clamped_color) -> attribute_number
-    # iterate over clamped_cells
-    #     change val -> dict(cell_value)
-    #
-    frames = ( cv2.imread(p, cv2.IMREAD_COLOR) for p in frame_paths )
-    #clamped_cells, clamped_colors = clamp(frames)
-    clamped_cells = clamp(frames)
-    kmeans( clamped_cells )
-    #kmeans( (cv2.imread(frame_paths[0], cv2.IMREAD_COLOR)) )
-    # [cells]      , set(colors)
-    # kmeans(
     try:
-        #scr = prep_curses()
-        #h, w = scr.getmaxyx()
-        #frames = tuple( resize_frame(cv2.imread(p, cv2.IMREAD_COLOR),w, h-1)  for p in frame_paths )
-        frames = tuple( cv2.imread(p, cv2.IMREAD_COLOR) for p in frame_paths )
-        kmeans(frames)
-        exit()
-        ccells, ccolors = clamp(frames)
+        scr = prep_curses()
+        h, w = scr.getmaxyx()
+
+        frames = tuple( resize_frame(cv2.imread(p, cv2.IMREAD_COLOR),w, h-1)  for p in frame_paths )
+        clamped_cells = clamp(frames)
+        color_map, centroids = kmeans( clamped_cells )
+        attr_map = init_colors(color_map, centroids)
 
 
-        for frame in frames:
-            cells = clamp_and_init(frame)
-
-            for y, row in enumerate(cells):
+        for frame in clamped_cells:
+            for y, row in enumerate(frame):
                 for x, cell in enumerate(row):
-                    scr.addstr(y, x, ' ', cell)
+                    scr.addstr(y, x, ' ', attr_map[cell])
             scr.refresh()
-            #curses.napms(2000)
 
     except Exception as e:
         scr.clear()
