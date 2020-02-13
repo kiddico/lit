@@ -54,16 +54,17 @@ def get_frame_paths(folder):
 
 
 def clamp(frames):
-    clamp = lambda x: int(int((x/255)*32)/32*1000)
+    clamp_val = lambda x: int(int((x/255)*32)/32*1000)
     #clamp = lambda x: int(int((x/255)*32)/32*1000)
-
+    return [ tuple(tuple(tuple(clamp_val(value) for value in  cell[::-1]) for cell in row) for row in f) for  f in frames ]
+        
     clamped_frames = []
     clamped_colors = set()
     for cells in frames:
-        clamped_frames.append(tuple(tuple(tuple(clamp(val) for val in cell[::-1]) for cell in row) for row in cells))
-        clamped_colors |= { x for y in clamped_cells for x in y }
-
-    return clamped_frames, clamped_colors
+        clamped_frames.append(tuple(tuple(tuple(numpy.int16(clamp(val)) for val in cell[::-1]) for cell in row) for row in cells))
+        #clamped_colors |= { x for y in clamped_cells for x in y }
+    return clamped_frames
+    #return clamped_frames, clamped_colors
 
 def color_init():
     pass
@@ -81,9 +82,11 @@ def main():
     # iterate over clamped_cells
     #     change val -> dict(cell_value)
     #
-
-    kmeans( (cv2.imread(frame_paths[0], cv2.IMREAD_COLOR)) )
-    # clamped_cells, clamped_colors = clamp()
+    frames = ( cv2.imread(p, cv2.IMREAD_COLOR) for p in frame_paths )
+    #clamped_cells, clamped_colors = clamp(frames)
+    clamped_cells = clamp(frames)
+    kmeans( clamped_cells )
+    #kmeans( (cv2.imread(frame_paths[0], cv2.IMREAD_COLOR)) )
     # [cells]      , set(colors)
     # kmeans(
     try:
