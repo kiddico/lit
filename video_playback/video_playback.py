@@ -12,7 +12,6 @@ from os.path import isfile, join
 
 from kmeans import kmeans
 
-# emd goal: map of colors to 
 def init_colors(color_map, centroids):
     cent_indexes = { cent:idx+1 for idx, cent in enumerate(centroids) }
 
