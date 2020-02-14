@@ -44,6 +44,10 @@ def main():
     else:
         frame_paths = get_frame_paths('ghost_sample_2_frames')
 
+    # Alright gents. Let's get some order in this chaos.
+    # Turns out videos look like videos when the frames are in the right order.
+    # Filenames need to follow the "<whatever>_f<frame number>.<extension>" rule.
+    frame_paths.sort(key=lambda x: int(x.split('_f')[1].split('.png')[0]))
     try:
         scr = prep_curses()
         h, w = scr.getmaxyx()
@@ -59,6 +63,8 @@ def main():
                 for x, cell in enumerate(row):
                     scr.addstr(y, x, ' ', attr_map[cell])
             scr.refresh()
+            # this will lock to ~24fps. Adjust accordingly.
+            curses.napms(40)
 
     except Exception as e:
         scr.clear()
