@@ -22,7 +22,7 @@ def kmeans(frames):
 
 
     # Iterate to taste.
-    for _ in range(0, 10):
+    for _ in range(0, 7):
         centroids = []
         for colors in clusters.values():
             # Find the average of all colors in a cluster and use that as a new centroid.
