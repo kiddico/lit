@@ -11,6 +11,7 @@ from os import listdir
 from os.path import isfile, join
 
 from kmeans import kmeans
+from time import time as t
 
 def init_colors(color_map, centroids):
     cent_indexes = { cent:idx+1 for idx, cent in enumerate(centroids) }
@@ -22,6 +23,7 @@ def init_colors(color_map, centroids):
 
     return attr_map
 
+# Resize to make a frame match the given res (preferably the terminal window's col/row count)
 def resize_frame(cv2_frame, x_res, y_res, half_height=False):
     y_res = int(y_res/2) if half_height else y_res
     new_res = (x_res, y_res)
@@ -30,10 +32,15 @@ def resize_frame(cv2_frame, x_res, y_res, half_height=False):
 def get_frame_paths(folder):
     return ['{}/{}'.format(folder, f) for f in listdir(folder) if isfile(join(folder, f))]
 
-
+clamp_val = lambda x: int(int((x/255)*8)/8*1000)
+memoized = { v:clamp_val(v) for v in range(0,256) }
 def clamp(frames):
-    clamp_val = lambda x: int(int((x/255)*32)/32*1000)
-    return [ tuple(tuple(tuple(clamp_val(value) for value in  cell[::-1]) for cell in row) for row in f) for  f in frames ]
+    # Clamping aligns values to discrete points on an interval.
+    # It also converts from OpenCV's 255 colors/channel to curse's 1000
+    # It may be faster to pre-compute all values, and use that.
+
+    memd = memoized
+    return [ tuple(tuple(tuple( memd[value] for value in  cell[::-1]) for cell in row) for row in f) for  f in frames ]
 
 
 
@@ -62,8 +69,7 @@ def main():
                 for x, cell in enumerate(row):
                     scr.addstr(y, x, ' ', attr_map[cell])
             scr.refresh()
-            # this will lock to ~24fps. Adjust accordingly.
-            curses.napms(40)
+            curses.napms(20)
 
     except Exception as e:
         scr.clear()

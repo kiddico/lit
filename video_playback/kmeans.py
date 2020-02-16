@@ -10,19 +10,19 @@ def kmeans(frames):
             color_set |= { cell for cell in row }
     color_list = list(color_set)
 
-
     dist = lambda c1,c2: sqrt(sum((px - qx) ** 2.0 for px, qx in zip(c1, c2)))
+    first_item = lambda x:x[0]
 
     # Initialize Clusters
     centroids = color_list[:255]# lists from set have no order. Hopefully this is random enough. ¯\_(ツ)_/¯
     clusters  = defaultdict(list)
     for color in color_list:
-        closest = min( ( (dist(color, cent), cent) for cent in centroids ), key=lambda x:x[0])
+        closest = min( ( (dist(color, cent), cent) for cent in centroids ), key=first_item)
         clusters[closest[1]].append(color)
 
 
     # Iterate to taste.
-    for _ in range(0, 7):
+    for _ in range(0, 5):
         centroids = []
         for colors in clusters.values():
             # Find the average of all colors in a cluster and use that as a new centroid.
@@ -37,7 +37,7 @@ def kmeans(frames):
         # For some reason calling a default dict's clear() will break it defaultiness
         clusters  = defaultdict(list)
         for color in color_list:
-            closest = min( ( (dist(color, cent), cent) for cent in centroids ), key=lambda x:x[0])
+            closest = min( ( (dist(color, cent), cent) for cent in centroids ), key=first_item)
             clusters[closest[1]].append(color)
 
     # Now we need to invert the dict so we have a color to centroid mapping
