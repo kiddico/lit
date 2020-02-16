@@ -5,14 +5,13 @@ import numpy
 import curses
 from utils import pp
 from sys import exit, argv
-from collections import namedtuple
 
 from os import listdir
 from os.path import isfile, join
 
 from kmeans import kmeans
-from time import time as t
 
+# Use the centroids in the color map made with the kmeans clustering algorithm.
 def init_colors(color_map, centroids):
     cent_indexes = { cent:idx+1 for idx, cent in enumerate(centroids) }
 
@@ -32,15 +31,12 @@ def resize_frame(cv2_frame, x_res, y_res, half_height=False):
 def get_frame_paths(folder):
     return ['{}/{}'.format(folder, f) for f in listdir(folder) if isfile(join(folder, f))]
 
-clamp_val = lambda x: int(int((x/255)*8)/8*1000)
-memoized = { v:clamp_val(v) for v in range(0,256) }
 def clamp(frames):
-    # Clamping aligns values to discrete points on an interval.
-    # It also converts from OpenCV's 255 colors/channel to curse's 1000
-    # It may be faster to pre-compute all values, and use that.
-
-    memd = memoized
-    return [ tuple(tuple(tuple( memd[value] for value in  cell[::-1]) for cell in row) for row in f) for  f in frames ]
+    # Clamping aligns values to discrete points along a range.
+    # It also converts from OpenCV's 255 colors/channel to curse's 1000/channel.
+    clamp_val = lambda x: int(int((x/255)*16)/16*1000)
+    memoized = { v:clamp_val(v) for v in range(0,256) }
+    return [ tuple(tuple(tuple( memoized[value] for value in cell[::-1]) for cell in row) for row in f) for f in frames ]
 
 
 
@@ -61,6 +57,7 @@ def main():
         frames = tuple( resize_frame(cv2.imread(p, cv2.IMREAD_COLOR),w, h-1)  for p in frame_paths )
         clamped_cells = clamp(frames)
         color_map, centroids = kmeans( clamped_cells )
+        # The attr(ibute) map takes colors and returns an attribute string that is passed to addstr()
         attr_map = init_colors(color_map, centroids)
 
 
@@ -69,7 +66,7 @@ def main():
                 for x, cell in enumerate(row):
                     scr.addstr(y, x, ' ', attr_map[cell])
             scr.refresh()
-            curses.napms(20)
+            curses.napms(25)
 
     except Exception as e:
         scr.clear()
